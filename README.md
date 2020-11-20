@@ -1,5 +1,5 @@
 # RFID Access Control
-This ESP8266 sketch communicates with a Weigand RFID reader and keypad. Ket features:
+This ESP8266 sketch communicates with a Wiegand RFID reader and keypad. Ket features:
 - Connect ot local MQTT server
 - Send RFID codes over to MQTT
 - Collect keypad presses and until # is pressed and send as a pin code over MQTT
@@ -7,7 +7,7 @@ This ESP8266 sketch communicates with a Weigand RFID reader and keypad. Ket feat
 - Neopixel LED provides visual feedback which is controller over MQTT
 ## Hardware
 This sketch uses a ESP8266, NodeMCU or Wemos D1 Mini.
-- Weigand reader: https://www.aliexpress.com/item/4001034161299.html
+- Wiegand reader: https://www.aliexpress.com/item/4001034161299.html
 - Neopixel (WS2812b) LED
 ## Wiring
 | ESP GPIO | ESP PIN | Weigand Reader  | NeoPixel |
