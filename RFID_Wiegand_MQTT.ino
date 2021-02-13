@@ -5,8 +5,11 @@
 // Libraries:
 // - Wiegand library: https://github.com/monkeyboard/Wiegand-Protocol-Library-for-Arduino
 // - FastLED by Daniel Garcia
+// - ArduinoJson: install latest from version 5
 // Hardware:
 // RFID reader: https://www.aliexpress.com/item/4001034161299.html
+// ibutton reader: https://www.aliexpress.com/item/33002684974.html
+// ibutton keys: https://www.aliexpress.com/item/33047420890.html
 //
 // NodeMCU pinout:
 // D6: green wire of the reader
@@ -15,13 +18,19 @@
 // 5V: 5V of the neopixel
 // GND: GND of the neopixel
 // D5: DataIn of the neopixel
+// D2: ibutton 
+// D3: relay1
+// D4: relay2
+// D0: relay3
+// D1: relay4
+// A0: input switch
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <PubSubClient.h>           // MQTT support
 #include <Wiegand.h>
-#include "icons.h"
+#include <OneWire.h>
 #include "globals.h"
 #include "settings.h"
 #include <FastLED.h>
@@ -33,65 +42,77 @@ ESP8266WebServer server(80);
 WiFiClient espClient;
 PubSubClient mqtt(mqtt_server, 1883, 0, espClient);
 CRGB leds[NUM_LEDS];
-
+OneWire ibutton (4); // iButton connected on D2.
 
 void setup() {
 	Serial.begin(115200);  
   Serial.println();
   Serial.println("Wiegand RFID reader");
+
+  // Initiate the relay outputs
+  digitalWrite(RELAY1, HIGH);
+  pinMode(RELAY1, OUTPUT);
+  digitalWrite(RELAY2, HIGH);
+  pinMode(RELAY2, OUTPUT);
+  digitalWrite(RELAY3, HIGH);
+  pinMode(RELAY3, OUTPUT);
+  digitalWrite(RELAY4, HIGH);
+  pinMode(RELAY4, OUTPUT);
+  
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalSMD5050 );
   FastLED.setBrightness( BRIGHTNESS );
-    leds[0] = CRGB::Gold;
-    FastLED.show();
+  leds[0] = CRGB::Gold;
+  FastLED.show();
 
-    Serial.print(F("Connecting to Wifi"));
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
-    seconds = 0;
-  
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(F("."));
-      seconds++;
-      if (seconds % 2 == 0) {
-        leds[0] = CRGB::Red;
-      } else {
-        leds[0] = CRGB::Black;
-      }
-      FastLED.show();      
-      if (seconds>180) {
-        // reboot the ESP if cannot connect to wifi
-        ESP.restart();
-      }
+  // Setting up wifi connection
+  Serial.print(F("Connecting to Wifi"));
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  seconds = 0;
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(F("."));
+    seconds++;
+    if (seconds % 2 == 0) {
+      leds[0] = CRGB::Red;
+    } else {
+      leds[0] = CRGB::Black;
     }
-    leds[0] = CRGB::Black;
-    FastLED.show();
-
-    Serial.println("");
-    Serial.print(F("Connected to "));
-    Serial.println(ssid);
-    Serial.print(F("IP address: "));
-    Serial.println(WiFi.localIP());
-    Serial.print(F("Signal [RSSI]: "));
-    Serial.println(WiFi.RSSI());
-
-    // Set up the MDNS and the HTTP server
-    if (mdns.begin("rfidmqtt", WiFi.localIP())) {
-      Serial.println(F("MDNS responder started"));
-    }  
-    server.on("/", [](){                        // Dummy page
-      server.send(200, "text/plain", "RFID MQTT");
-    });
-    server.begin();
-    Serial.println(F("HTTP server started"));
-
-
-     // Set up the MQTT server connection
-    if (mqtt_server!="") {
-      mqtt.setServer(mqtt_server, 1883);
-      mqtt.setCallback(MQTTcallback);
-      reconnect();
+    FastLED.show();      
+    if (seconds>180) {
+      // reboot the ESP if cannot connect to wifi
+      ESP.restart();
     }
+  }
+  leds[0] = CRGB::Black;
+  FastLED.show();
+
+  Serial.println("");
+  Serial.print(F("Connected to "));
+  Serial.println(ssid);
+  Serial.print(F("IP address: "));
+  Serial.println(WiFi.localIP());
+  Serial.print(F("Signal [RSSI]: "));
+  Serial.println(WiFi.RSSI());
+
+  // Set up the MDNS and the HTTP server
+  if (mdns.begin("rfidmqtt", WiFi.localIP())) {
+    Serial.println(F("MDNS responder started"));
+  }  
+  server.on("/", [](){                        // Dummy page
+    server.send(200, "text/plain", "RFID MQTT");
+  });
+  server.begin();
+  Serial.println(F("HTTP server started"));
+
+
+  // Set up the MQTT server connection
+  if (mqtt_server!="") {
+    mqtt.setServer(mqtt_server, 1883);
+    mqtt.setCallback(MQTTcallback);
+    reconnect();
+  }
       
 	// default Wiegand Pin 2 and Pin 3 see image on README.md
 	// for non UNO board, use wg.begin(pinD0, pinD1) where pinD0 and pinD1 
@@ -101,7 +122,6 @@ void setup() {
 }
 
 void loop() {
-  handleWiegand();
 
   // Handle MQTT connection/reconnection
   if (mqtt_server!="") {
@@ -109,14 +129,91 @@ void loop() {
       reconnect();
     }
     mqtt.loop();
+    delay(10);
   }
-  // Send status update message
+  
+  handleWiegand();
+  handleiButton();
+  handleAnalogInput();
   handleMQTTStatus();
-
   handleStatusLED();
+  handlePulseReset();
   
 }
 
+// Check the analog input and post changes to MQTT
+void handleAnalogInput() {
+  if (millis()-lastAnalog>ANALOGRATE) {
+    int sensorValue = analogRead(ANALOGINPUT);
+    bool sensorBool = (sensorValue>500 ? false : true);
+
+    if (lastAnalogState!=sensorBool) {
+      if (sensorBool) {
+        mqtt.publish(topicInput, "1");
+      } else {
+        mqtt.publish(topicInput, "0");
+      }
+      lastAnalogState = sensorBool;
+      lastAnalog=millis();
+      Serial.print("Input: ");
+      Serial.print(sensorBool);
+      Serial.println("  -> MQTT sent");
+    }
+  }
+}
+
+// Check devices connected to the iButton onewire interface
+// and post the device ID in hex to MQTT
+void handleiButton() {
+  const char * hex = "0123456789abcdef";
+  String code = "";
+  // Search for an iButton and assign the value to the buffer if found.
+  if (!ibutton.search (buffer)){
+     ibutton.reset_search();
+     return;
+  }
+  // At this point an iButton is found
+ 
+  for (int x = 0; x<8; x++){
+        code+= hex[(buffer[x]>>4) & 0xF];
+        code+= hex[ buffer[x]     & 0xF];
+  }
+  //Serial.println(code);
+ 
+  // Check if this is a iButton
+  if ( buffer[0] != 0x01) {
+    Serial.println("Device is not a iButton");
+    return;
+  } else {
+    //Serial.println("Device is a iButton");
+  }
+ 
+  if ( ibutton.crc8( buffer, 7) != buffer[7]) {
+      Serial.println("CRC is not valid!");
+      return;
+  }
+
+  // check if it is not a duplicate scan
+  if ((code == lastiButton)&&(millis()-lastiButtonTime<IBUTTONLIMIT)) {
+    return;
+  }
+
+  lastiButton=code;
+  lastiButtonTime=millis();
+  
+  Serial.print("iButton: ");
+  Serial.print(code);
+
+  String msg;
+  msg = "{\"code\":\"";
+  msg += code;
+  msg += "\",\"type\": \"ibutton\"}";
+  ibuttoncount++;
+  mqtt.publish(topicEvent, msg.c_str());
+  Serial.println("  -> MQTT sent");
+}
+
+// Handle the blink effect on the NeoPixel
 void handleStatusLED() {
   if (LEDphase!=0) {
     // Phase 2, first color is on
@@ -160,6 +257,21 @@ void handleStatusLED() {
   }
 }
 
+// This resets the relay output when it was turned on in pulse mode
+void handlePulseReset() {
+  if ((pulse1State)&&(millis()-lastPulse1>250)) {
+    digitalWrite(RELAY1, HIGH);
+    pulse1State = false;
+    Serial.println("Relay1 Pulse End");
+  }
+  if ((pulse2State)&&(millis()-lastPulse2>250)) {
+    digitalWrite(RELAY2, HIGH);
+    pulse2State = false;
+    Serial.println("Relay2 Pulse End");
+  }
+}
+
+// Color conversion routine
 void SetLEDColor(String color) {
   
   if (color=="black") {
@@ -180,6 +292,7 @@ void SetLEDColor(String color) {
   FastLED.show();
 }
 
+// Check the Wiegand input for new keypresses or scanned RFID tags
 void handleWiegand() {
   if (millis()-lastKey > PINTIMEOUT) {
     if (pin!="") {
@@ -199,7 +312,7 @@ void handleWiegand() {
     Serial.print(wtype); 
 
     // RFID card was scanned  
-    if (wtype==26) {
+    if ((wtype==26)||(wtype==34)) {
       String msg;
       msg = "{\"code\":";
       msg += wcode;
@@ -254,6 +367,7 @@ void handleWiegand() {
   }
 }
 
+// Send status messge over MQTT
 void handleMQTTStatus() {
   if (millis() - lastStatus >= STATUSUPDATEFRQ) {  
     lastStatus = millis();
@@ -266,6 +380,8 @@ void handleMQTTStatus() {
     mqttStat += rfidcount;
     mqttStat += ",\"pincount\":";
     mqttStat += pincount;
+    mqttStat += ",\"ibuttoncount\":";
+    mqttStat += ibuttoncount;
     mqttStat += "}";
     mqtt.publish(topicStatus, mqttStat.c_str());
     Serial.print(F("Status: "));
@@ -282,18 +398,33 @@ void reconnect() {
     if (mqtt.connect(clientID, mqtt_user, mqtt_password)) {
       Serial.println(F("connected"));
       // ... and resubscribe
-      mqtt.subscribe(topicRelay);
+      mqtt.subscribe(topicRelay1);
       Serial.print(F("Subscribed to "));
-      Serial.println(topicRelay);
+      Serial.println(topicRelay1);
+      mqtt.subscribe(topicRelay2);
+      Serial.print(F("Subscribed to "));
+      Serial.println(topicRelay2);
+      mqtt.subscribe(topicRelay3);
+      Serial.print(F("Subscribed to "));
+      Serial.println(topicRelay3);
+      mqtt.subscribe(topicRelay4);
+      Serial.print(F("Subscribed to "));
+      Serial.println(topicRelay4);
       mqtt.subscribe(topicLight);
       Serial.print(F("Subscribed to "));
       Serial.println(topicLight);
+      mqtt.subscribe(topicPulse1);
+      Serial.print(F("Subscribed to "));
+      Serial.println(topicPulse1);
+      mqtt.subscribe(topicPulse2);
+      Serial.print(F("Subscribed to "));
+      Serial.println(topicPulse2);
     } else {
       Serial.print(F("failed, rc="));
       Serial.print(mqtt.state());
       Serial.println(F(" try again in 5 seconds"));
       // Wait 5 seconds before retrying
-      delay(5000);
+      delay(1000);
     }
   }
 }
@@ -318,11 +449,66 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length) {
   Serial.print(F("], "));
   Serial.println(message);
 
-  if (strTopic==(String)topicRelay) {
-    int newvolume = atoi((char *)payload);
-    if ((newvolume>=0) && (newvolume<22)) {
-      Serial.print(F("New volume: "));
-      Serial.println(newvolume);  
+  if (strTopic==(String)topicRelay1) {
+    int newvalue = atoi((char *)payload);
+    if (newvalue==0) {
+      digitalWrite(RELAY1, HIGH);
+      Serial.println("Relay1 off");  
+    }
+    if (newvalue==1) {
+      digitalWrite(RELAY1, LOW);
+      Serial.println("Relay1 on");  
+    }
+  }
+  if (strTopic==(String)topicRelay2) {
+    int newvalue = atoi((char *)payload);
+    if (newvalue==0) {
+      digitalWrite(RELAY2, HIGH);
+      Serial.println("Relay2 off");  
+    }
+    if (newvalue==1) {
+      digitalWrite(RELAY2, LOW);
+      Serial.println("Relay2 on");  
+    }
+  }
+  if (strTopic==(String)topicRelay3) {
+    int newvalue = atoi((char *)payload);
+    if (newvalue==0) {
+      digitalWrite(RELAY3, HIGH);
+      Serial.println("Relay3 off");  
+    }
+    if (newvalue==1) {
+      digitalWrite(RELAY3, LOW);
+      Serial.println("Relay3 on");  
+    }
+  }
+  if (strTopic==(String)topicRelay4) {
+    int newvalue = atoi((char *)payload);
+    if (newvalue==0) {
+      digitalWrite(RELAY4, HIGH);
+      Serial.println("Relay4 off");  
+    }
+    if (newvalue==1) {
+      digitalWrite(RELAY4, LOW);
+      Serial.println("Relay4 on");  
+    }
+  }
+  if (strTopic==(String)topicPulse1) {
+    int newvalue = atoi((char *)payload);
+    if (newvalue==1) {
+      digitalWrite(RELAY1, LOW);
+      Serial.println("Relay1 Pulse");  
+      lastPulse1 = millis();
+      pulse1State = true;
+    }
+  }
+  if (strTopic==(String)topicPulse2) {
+    int newvalue = atoi((char *)payload);
+    if (newvalue==1) {
+      digitalWrite(RELAY2, LOW);
+      Serial.println("Relay2 Pulse");  
+      lastPulse2 = millis();
+      pulse2State = true;
     }
   }
   if (strTopic==(String)topicLight) {
