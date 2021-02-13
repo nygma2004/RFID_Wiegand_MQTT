@@ -19,10 +19,10 @@
 // GND: GND of the neopixel
 // D5: DataIn of the neopixel
 // D2: ibutton 
-// D3: relay1
-// D4: relay2
-// D0: relay3
-// D1: relay4
+// D0: relay1
+// D1: relay2
+// D2: relay3
+// D3: relay4
 // A0: input switch
 
 #include <ESP8266WiFi.h>
@@ -42,7 +42,7 @@ ESP8266WebServer server(80);
 WiFiClient espClient;
 PubSubClient mqtt(mqtt_server, 1883, 0, espClient);
 CRGB leds[NUM_LEDS];
-OneWire ibutton (4); // iButton connected on D2.
+OneWire ibutton(IBUTTONPIN); // iButton connected on D2.
 
 void setup() {
 	Serial.begin(115200);  

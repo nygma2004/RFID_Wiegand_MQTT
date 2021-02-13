@@ -8,6 +8,7 @@
 #define RELAY3 0
 #define RELAY4 2
 #define ANALOGINPUT A0
+#define IBUTTONPIN 4
 
 #define NUM_LEDS 1
 #define LED_TYPE    WS2812
