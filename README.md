@@ -58,6 +58,8 @@ This device is designed to be used with a Home Automation system in a background
 - Solution can also idetify events, which is similar to users: multiple IDs, days of week and time restriction, but the event can also request a user identification when the user after entering the PIN/RFID for the event also needs to enter his PIN/RFID and the user access level is checked against system's access level.
 - Access logging with success identifications and also errors/failed identification
 - Access log reports
+
+Node-Red flow can be downloaded here: https://flows.nodered.org/flow/2f9c31009af651823796c4a97a8dfda4
 ## NeoPixel light
 I am using a single pixel neopixel LED (WS2812B) to provide visual status. This can blink in different patterns: long green when code accepted, 2 red blinks when rejected, and 3 yellow blinks when 2 factor authentication required. These light patterns are sent from Node-Red to the `topicLight` topic. And the payload has to be in this format: `{"color1":"red","color2":"black","blink1":500,"blink2":500,"duration":2000}`, this will make the neopixel to blink for 2000 (duration) miliseconds, alternating between red (color1) and black/off (color2), with red for 500 miliseconds (blink1) and black/off for 500 miliseconds (blink2). Accepted colors are coded in function `SetLEDColor`, currently only black, yellow, red, green, blue supported.
 ## Relay outputs
