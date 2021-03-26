@@ -41,10 +41,11 @@ This sketch uses a ESP8266, NodeMCU or Wemos D1 Mini.
 Besides this the Weigand reader also need a +12V DC supply connected to the red wire.
 ## Overall project design
 This is my first video on the project, which explains how the Arduino sketch and the Node-Red flow works:
+
 [![Project explanation](https://img.youtube.com/vi/YPGb-sdbfdw/0.jpg)](https://www.youtube.com/watch?v=YPGb-sdbfdw)
 
-
 My follow-up video with the final PCB design:
+
 [![PCB prototype](https://img.youtube.com/vi/ft3YiPXy4ck/0.jpg)](https://www.youtube.com/watch?v=ft3YiPXy4ck)
 
 ## Security Considerations
