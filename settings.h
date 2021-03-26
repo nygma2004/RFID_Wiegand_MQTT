@@ -8,10 +8,10 @@
 #define PULSEDELAY 250        // Length of the pulse output
 
 const char *ssid = "xxx";                     // Wifi SSID
-const char *password = "yyyy";              // Wifi password
+const char *password = "xxx";              // Wifi password
 const char* mqtt_server = "192.168.1.xx";               // MQTT server address, leave empty to disable MQTT function
 const char* mqtt_user = "xxx";                          // MQTT user id
-const char* mqtt_password = "xxx";                      // MQTT password
+const char* mqtt_password = "xxxx";                      // MQTT password
 const char* clientID = "rfid2";                     // MQTT client ID
 const char* topicStatus = "rfid/status";          // MQTT topic where the device sends updates every 10 seconds
 const char* topicEvent = "rfid/event";          // pin code entered, or card scanned
