@@ -1,20 +1,26 @@
 # RFID Access Control
 This ESP8266 sketch communicates with a Wiegand RFID reader and keypad. Ket features:
 - Connect ot local MQTT server
-- Send RFID codes over to MQTT
+- Send RFID, iButton codes over to MQTT
 - Collect keypad presses and until # is pressed and send as a pin code over MQTT
-- Block RFID readings and pin code entries too close to each other
+- Block RFID, iButton readings and pin code entries too close to each other
 - Neopixel LED provides visual feedback which is controller over MQTT
 - Read ibutton keycards using a ibutton (one wire) reader
 - Use A0 input as a digital input (e.g. state of the gate, garage door)
 - 4 relay outputs to control gates, garage doors, lights, etc.
+
+![Prototype Project](pcb/20210326_182024.jpg)
 ## Hardware
 This sketch uses a ESP8266, NodeMCU or Wemos D1 Mini.
+- NodeMCU: ESP8266 based development board: any NodeMCU board from Aliexpress, eBay, Banggood, etc.
 - Wiegand reader: https://www.aliexpress.com/item/4001034161299.html
 - Neopixel (WS2812b) LED: https://www.banggood.com/10Pcs-Geekcreit-DC-5V-3MM-x-10MM-WS2812B-SMD-LED-Board-Built-in-IC-WS2812-p-958213.html
 - ibutton reader: https://www.aliexpress.com/item/33002684974.html
 - ibutton keys: https://www.aliexpress.com/item/33047420890.html
 - 4 channel relay board: any active low relay board with optical isolation
+- Screw terminals: https://www.aliexpress.com/item/32828459901.html
+- LM7805 linear voltage regulator with a heatsink, 33uF and 1uf electrolitic capacitors (e.g. 16V)
+- Mini buck converter instead of the LM7805: https://www.aliexpress.com/item/4000076471931.html
 
 ## Wiring
 | ESP GPIO | ESP PIN | Weigand Reader  | NeoPixel | iButton reader | 4CH Relay board |
@@ -31,6 +37,13 @@ This sketch uses a ESP8266, NodeMCU or Wemos D1 Mini.
 | 4        | D2      |                 |          | Green          |                 | 
 
 Besides this the Weigand reader also need a +12V DC supply connected to the red wire.
+## Overall project design
+This is my first video on the project, which explains how the Arduino sketch and the Node-Red flow works:
+[![Project explanation](https://img.youtube.com/vi/YPGb-sdbfdw/0.jpg)](https://www.youtube.com/watch?v=YPGb-sdbfdw)
+
+My follow-up video with the final PCB design
+[![PCB prototype](https://img.youtube.com/vi/ft3YiPXy4ck/0.jpg)](https://www.youtube.com/watch?v=ft3YiPXy4ck)
+
 ## Security Considerations
 Keep in mind that the RFID readers that I got for this RFID reader and rewriteable RFID tags. So this does not prevent somebody getting hold of your tags and making a copy. Therefore I would recommend to include additional security measure in your overall solution. I am definitely going to add a camera watching the area where the reader is, so I can get an image when somebody uses the reader. And definitely control devices that would not anyone to get into the house (e.g. open the passanger gate, or car gate, but not disable the alarm or open the garage door). But this is up to you, just keep the security limitations in mind.
 ## Node-Red Functions
@@ -47,3 +60,7 @@ I am using a single pixel neopixel LED (WS2812B) to provide visual status. This 
 The code supports 4 relay outputs, which can be controlled `topicRelay1`, `topicRelay2`, `topicRelay3`, `topicRelay4` topics. These accept `0` or `1` in the payload. Relay output 1 and 2 also supports a pulse mode (short on pulse) to control garage doors, gates, etc. This is activated by `topicPulse1` and `topicPulse2` topic, by sending `1` in the payload.
 ## Input
 The input works are a digital input and changed to the state is posted to the `topicInput` topic, with payload either `0` or `1`. I am planning to use this as a feedback if the garage or gate is open or not.
+## PCB
+I designed a PCB which is available on my PCBWay Project Page: https://www.pcbway.com/project/shareproject/RFID__iButton_MQTT_Access_Control.html
+
+
