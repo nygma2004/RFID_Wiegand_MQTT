@@ -10,6 +10,8 @@ This ESP8266 sketch communicates with a Wiegand RFID reader and keypad. Ket feat
 - 4 relay outputs to control gates, garage doors, lights, etc.
 
 ![Prototype Project](pcb/20210326_182024.jpg)
+
+You don't necessarily have to use the RFID and the iButton reader, you can choose which one you like better. The RFID reader communicates using the Wiegand protocol therefore other readers would be usable as well (only tested with this model).
 ## Hardware
 This sketch uses a ESP8266, NodeMCU or Wemos D1 Mini.
 - NodeMCU: ESP8266 based development board: any NodeMCU board from Aliexpress, eBay, Banggood, etc.
@@ -41,7 +43,8 @@ Besides this the Weigand reader also need a +12V DC supply connected to the red 
 This is my first video on the project, which explains how the Arduino sketch and the Node-Red flow works:
 [![Project explanation](https://img.youtube.com/vi/YPGb-sdbfdw/0.jpg)](https://www.youtube.com/watch?v=YPGb-sdbfdw)
 
-My follow-up video with the final PCB design
+
+My follow-up video with the final PCB design:
 [![PCB prototype](https://img.youtube.com/vi/ft3YiPXy4ck/0.jpg)](https://www.youtube.com/watch?v=ft3YiPXy4ck)
 
 ## Security Considerations
@@ -63,4 +66,13 @@ The input works are a digital input and changed to the state is posted to the `t
 ## PCB
 I designed a PCB which is available on my PCBWay Project Page: https://www.pcbway.com/project/shareproject/RFID__iButton_MQTT_Access_Control.html
 
+![PCB](pcb/20210326_181939.jpg)
+
+![PCB](pcb/20210326_181948.jpg)
+
+![PCB](pcb/20210326_182030.jpg)
+
+Please watch my second video (see above) which explains the how you wire the different components to the PCB.
+
+PCB schematic: https://github.com/nygma2004/RFID_Wiegand_MQTT/blob/main/pcb/Schematic_RFID_2021-03-26.pdf
 
