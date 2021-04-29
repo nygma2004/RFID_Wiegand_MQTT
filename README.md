@@ -36,7 +36,7 @@ This sketch uses a ESP8266, NodeMCU or Wemos D1 Mini.
 | 5        | D1      |                 |          |                | IN2             | 
 | 0        | D3      |                 |          |                | IN3             | 
 | 2        | D4      |                 |          |                | IN4             | 
-| 4        | D2      |                 |          | Green          |                 | 
+| 4        | D2      |                 |          | Red            |                 | 
 
 Besides this the Weigand reader also need a +12V DC supply connected to the red wire.
 ## Overall project design
